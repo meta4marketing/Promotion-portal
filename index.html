@@ -269,13 +269,6 @@
           </div>
 
           <div class="mb-3">
-            <label for="userEmail" class="form-label">Your Email</label>
-            <input type="email" id="userEmail" class="form-control"
-                   placeholder="e.g. you@example.com" required>
-            <div class="form-text">Use the same email every time — you'll log in with this on your dashboard.</div>
-          </div>
-
-          <div class="mb-3">
             <label for="adName" class="form-label">Ad Name</label>
             <input type="text" id="adName" class="form-control"
                    placeholder="e.g. Summer Offer Campaign" maxlength="100" required>
@@ -1040,18 +1033,6 @@
   document.getElementById('adForm').addEventListener('submit', async function(e) {
     e.preventDefault();
 
-    const emailValue = document.getElementById('userEmail').value.trim();
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!emailPattern.test(emailValue)) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Valid email required',
-        text: 'Please enter a valid email address — you\'ll use it to log into your dashboard.'
-      });
-      return;
-    }
-
     const selectedPlatforms =
       [...document.querySelectorAll('.platform-check:checked')];
 
@@ -1114,7 +1095,6 @@
 
       // 2) Build ad data (all form fields)
       const adData = {
-        email: document.getElementById('userEmail').value.trim().toLowerCase(),
         adName: document.getElementById('adName').value.trim(),
         description: document.getElementById('adDescription').value.trim(),
         age: document.getElementById('ageRange').value,
