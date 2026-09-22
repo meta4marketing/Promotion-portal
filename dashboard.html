@@ -293,10 +293,27 @@ function renderTable(ads) {
       <td>${formatDate(ad.createdAt)}</td>
       <td><code>${escapeHtml(ad.id)}</code></td>
       <td>
-        <button type="button" class="btn btn-sm btn-outline-danger delete-btn"
-          data-id="${escapeHtml(ad.id)}" data-name="${escapeHtml(ad.adName || 'this ad')}">
-          <i class="bi bi-trash3 me-1"></i>Delete
-        </button>
+        <div class="d-flex gap-1 flex-wrap">
+          ${
+            String(ad.status || 'pending').toLowerCase() === 'pending'
+            ? `
+              <button type="button" class="btn btn-sm btn-outline-success approve-btn"
+                data-id="${escapeHtml(ad.id)}" data-name="${escapeHtml(ad.adName || 'this ad')}">
+                <i class="bi bi-check-lg me-1"></i>Approve
+              </button>
+            `
+            : `
+              <button type="button" class="btn btn-sm btn-outline-secondary pause-btn"
+                data-id="${escapeHtml(ad.id)}" data-name="${escapeHtml(ad.adName || 'this ad')}">
+                <i class="bi bi-pause-fill me-1"></i>Pause
+              </button>
+            `
+          }
+          <button type="button" class="btn btn-sm btn-outline-danger delete-btn"
+            data-id="${escapeHtml(ad.id)}" data-name="${escapeHtml(ad.adName || 'this ad')}">
+            <i class="bi bi-trash3 me-1"></i>Delete
+          </button>
+        </div>
       </td>
     </tr>
   `).join('');
@@ -306,6 +323,51 @@ function renderTable(ads) {
       deleteAd(this.dataset.id, this.dataset.name);
     });
   });
+
+  document.querySelectorAll('.approve-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      updateAdStatus(this.dataset.id, this.dataset.name, 'active');
+    });
+  });
+
+  document.querySelectorAll('.pause-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      updateAdStatus(this.dataset.id, this.dataset.name, 'paused');
+    });
+  });
+}
+
+/* =========================================================
+   UPDATE AD STATUS (Approve / Pause)
+   ========================================================= */
+
+async function updateAdStatus(docId, adName, newStatus) {
+  try {
+    await db.collection('adCampaigns').doc(docId).update({
+      status: newStatus,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    Swal.fire({
+      icon: 'success',
+      title: newStatus === 'active' ? 'Ad Approved' : 'Ad Paused',
+      text: `"${adName}" status updated to ${newStatus}.`,
+      timer: 1400,
+      showConfirmButton: false
+    });
+
+    const updatedAds = await loadAds();
+    renderStats(updatedAds);
+    renderTable(updatedAds);
+
+  } catch (error) {
+    console.error('Status update error:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Update failed',
+      text: error.message || 'Unable to update ad status.'
+    });
+  }
 }
 
 /* =========================================================
