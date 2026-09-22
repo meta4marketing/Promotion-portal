@@ -180,12 +180,6 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-/* =========================================================
-   IMPORTANT:
-   Dashboard DOES NOT load until user enters Ad Name.
-   The same Ad Name is used to find the matching Firestore row.
-   ========================================================= */
-
 let currentUser = null;
 let requestedAdName = '';
 
@@ -208,12 +202,9 @@ function formatINR(value) {
 
 function formatDate(value) {
   if (!value) return '—';
-
   try {
     const date = value.toDate ? value.toDate() : new Date(value);
-
     if (Number.isNaN(date.getTime())) return '—';
-
     return date.toLocaleString('en-IN', {
       dateStyle: 'medium',
       timeStyle: 'short'
@@ -225,7 +216,6 @@ function formatDate(value) {
 
 function formatPlatforms(platforms) {
   if (!Array.isArray(platforms) || !platforms.length) return '—';
-
   return platforms.map(platform =>
     `<span class="platform-badge">${escapeHtml(platform)}</span>`
   ).join('');
@@ -233,13 +223,10 @@ function formatPlatforms(platforms) {
 
 function formatStatus(status) {
   const value = String(status || 'pending').toLowerCase();
-
   let className = 'status-pending';
-
   if (value === 'active') className = 'status-active';
   if (value === 'paused') className = 'status-paused';
   if (value === 'rejected') className = 'status-rejected';
-
   return `<span class="status-badge ${className}">
     ${escapeHtml(status || 'pending')}
   </span>`;
@@ -247,6 +234,8 @@ function formatStatus(status) {
 
 /* =========================================================
    AUTH
+   Handles auth/configuration-not-found with a clear message
+   telling the developer exactly what to enable in console.
    ========================================================= */
 
 async function signInUser() {
@@ -255,10 +244,27 @@ async function signInUser() {
     return currentUser;
   }
 
-  const result = await auth.signInAnonymously();
-  currentUser = result.user;
+  try {
+    const result = await auth.signInAnonymously();
+    currentUser = result.user;
+    return currentUser;
+  } catch (error) {
+    console.error('Auth error:', error);
 
-  return currentUser;
+    if (error.code === 'auth/configuration-not-found' ||
+        error.code === 'auth/admin-restricted-operation') {
+      throw new Error(
+        'CONFIG_ERROR:Anonymous sign-in is not enabled for this Firebase project. ' +
+        'Go to Firebase Console → Authentication → Sign-in method → enable "Anonymous", then reload this page.'
+      );
+    }
+
+    if (error.code === 'auth/network-request-failed') {
+      throw new Error('CONFIG_ERROR:Network error while contacting Firebase. Check your internet connection and try again.');
+    }
+
+    throw new Error('CONFIG_ERROR:Authentication failed (' + (error.code || 'unknown error') + '). ' + (error.message || ''));
+  }
 }
 
 /* =========================================================
@@ -266,7 +272,6 @@ async function signInUser() {
    ========================================================= */
 
 async function askForAdName() {
-
   const result = await Swal.fire({
     icon: 'info',
     title: 'Enter your Ad Name',
@@ -303,7 +308,6 @@ async function askForAdName() {
   }
 
   requestedAdName = result.value.trim();
-
   return true;
 }
 
@@ -312,17 +316,9 @@ async function askForAdName() {
    ========================================================= */
 
 async function findUserAdsByAdName() {
-
   const user = await signInUser();
 
   const searchName = normalizeName(requestedAdName);
-
-  /*
-    IMPORTANT:
-    We first query ownerUid.
-    Then we compare adName in JavaScript.
-    This avoids requiring a Firestore composite index.
-  */
 
   const snapshot = await db
     .collection('adCampaigns')
@@ -332,27 +328,17 @@ async function findUserAdsByAdName() {
   const ads = [];
 
   snapshot.forEach(doc => {
-
     const data = doc.data();
-
     if (normalizeName(data.adName) === searchName) {
-
-      ads.push({
-        id: doc.id,
-        ...data
-      });
-
+      ads.push({ id: doc.id, ...data });
     }
-
   });
-
-  /*
-    If the exact ad name is not found, stop here.
-  */
 
   if (!ads.length) {
     throw new Error(
-      'No ad was found with this name. Please enter the exact Ad Name used during submission.'
+      'No ad was found with this name for this browser/device. ' +
+      'Make sure you are opening this dashboard from the SAME browser you used to submit the ad ' +
+      '(anonymous auth is tied to the device/browser), and that the Ad Name matches exactly.'
     );
   }
 
@@ -364,7 +350,6 @@ async function findUserAdsByAdName() {
    ========================================================= */
 
 function renderStats(ads) {
-
   document.getElementById('totalAds').textContent = ads.length;
 
   const pending = ads.filter(ad =>
@@ -377,9 +362,7 @@ function renderStats(ads) {
   );
 
   document.getElementById('pendingAds').textContent = pending;
-
-  document.getElementById('totalBudget').textContent =
-    formatINR(totalBudget);
+  document.getElementById('totalBudget').textContent = formatINR(totalBudget);
 }
 
 /* =========================================================
@@ -387,7 +370,6 @@ function renderStats(ads) {
    ========================================================= */
 
 function renderTable(ads) {
-
   const tbody = document.getElementById('adsTableBody');
 
   if (!ads.length) {
@@ -404,144 +386,56 @@ function renderTable(ads) {
     return;
   }
 
-  /*
-    Newest first.
-  */
-
   ads.sort((a, b) => {
-
-    const aTime =
-      a.createdAt && a.createdAt.toMillis
-        ? a.createdAt.toMillis()
-        : 0;
-
-    const bTime =
-      b.createdAt && b.createdAt.toMillis
-        ? b.createdAt.toMillis()
-        : 0;
-
+    const aTime = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+    const bTime = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
     return bTime - aTime;
-
   });
 
   tbody.innerHTML = ads.map(ad => `
-
     <tr id="row-${escapeHtml(ad.id)}">
-
-      <td>
-        <strong>${escapeHtml(ad.adName || '—')}</strong>
-      </td>
-
+      <td><strong>${escapeHtml(ad.adName || '—')}</strong></td>
       <td style="min-width:220px;max-width:320px;">
-        <div
-          class="text-truncate"
-          title="${escapeHtml(ad.description || '')}"
-        >
+        <div class="text-truncate" title="${escapeHtml(ad.description || '')}">
           ${escapeHtml(ad.description || '—')}
         </div>
       </td>
-
       <td>${escapeHtml(ad.age || '—')}</td>
-
       <td>${escapeHtml(ad.gender || '—')}</td>
-
-      <td style="min-width:180px;">
-        ${escapeHtml(ad.interests || '—')}
-      </td>
-
-      <td style="min-width:220px;">
-        ${escapeHtml(ad.location || '—')}
-      </td>
-
+      <td style="min-width:180px;">${escapeHtml(ad.interests || '—')}</td>
+      <td style="min-width:220px;">${escapeHtml(ad.location || '—')}</td>
+      <td>${ad.radius != null ? escapeHtml(ad.radius) + ' km' : '—'}</td>
+      <td><strong>₹${formatINR(ad.budget)}</strong></td>
+      <td style="min-width:170px;">${formatPlatforms(ad.platforms)}</td>
+      <td>${escapeHtml(ad.paymentMethod || '—')}</td>
       <td>
-        ${ad.radius != null
-          ? escapeHtml(ad.radius) + ' km'
-          : '—'}
-      </td>
-
-      <td>
-        <strong>₹${formatINR(ad.budget)}</strong>
-      </td>
-
-      <td style="min-width:170px;">
-        ${formatPlatforms(ad.platforms)}
-      </td>
-
-      <td>
-        ${escapeHtml(ad.paymentMethod || '—')}
-      </td>
-
-      <td>
-
         ${
           ad.imageUrl
-
           ? `
-            <a
-              href="${escapeHtml(ad.imageUrl)}"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <img
-                src="${escapeHtml(ad.imageUrl)}"
-                class="ad-image"
-                alt="Ad creative"
-                loading="lazy"
-                onerror="this.style.display='none'"
-              >
+            <a href="${escapeHtml(ad.imageUrl)}" target="_blank" rel="noopener noreferrer">
+              <img src="${escapeHtml(ad.imageUrl)}" class="ad-image" alt="Ad creative" loading="lazy" onerror="this.style.display='none'">
             </a>
           `
-
           : '—'
         }
-
       </td>
-
+      <td>${formatStatus(ad.status)}</td>
+      <td>${formatDate(ad.createdAt)}</td>
+      <td>${formatDate(ad.updatedAt)}</td>
+      <td><code>${escapeHtml(ad.id)}</code></td>
       <td>
-        ${formatStatus(ad.status)}
-      </td>
-
-      <td>
-        ${formatDate(ad.createdAt)}
-      </td>
-
-      <td>
-        ${formatDate(ad.updatedAt)}
-      </td>
-
-      <td>
-        <code>${escapeHtml(ad.id)}</code>
-      </td>
-
-      <td>
-
-        <button
-          type="button"
-          class="btn btn-sm btn-outline-danger delete-btn"
-          data-id="${escapeHtml(ad.id)}"
-          data-name="${escapeHtml(ad.adName || 'this ad')}"
-        >
-          <i class="bi bi-trash3 me-1"></i>
-          Delete Ad
+        <button type="button" class="btn btn-sm btn-outline-danger delete-btn"
+          data-id="${escapeHtml(ad.id)}" data-name="${escapeHtml(ad.adName || 'this ad')}">
+          <i class="bi bi-trash3 me-1"></i>Delete Ad
         </button>
-
       </td>
-
     </tr>
-
   `).join('');
 
   document.querySelectorAll('.delete-btn').forEach(button => {
-
     button.addEventListener('click', function() {
-
-      deleteAd(
-        this.dataset.id,
-        this.dataset.name
-      );
-
+      deleteAd(this.dataset.id, this.dataset.name);
     });
-
   });
 }
 
@@ -550,53 +444,28 @@ function renderTable(ads) {
    ========================================================= */
 
 async function deleteAd(docId, adName) {
-
   const confirmation = await Swal.fire({
-
     icon: 'warning',
-
     title: 'Delete this ad?',
-
     html: `
-      <p class="mb-1">
-        You are about to permanently delete:
-      </p>
-
+      <p class="mb-1">You are about to permanently delete:</p>
       <strong>${escapeHtml(adName)}</strong>
-
       <p class="text-danger small mt-3 mb-0">
         All Firestore data belonging to this ad will be deleted.
       </p>
     `,
-
     showCancelButton: true,
-
     confirmButtonText: 'Yes, Delete',
-
     cancelButtonText: 'Cancel',
-
     confirmButtonColor: '#dc3545',
-
     reverseButtons: true
-
   });
 
-  if (!confirmation.isConfirmed) {
-    return;
-  }
+  if (!confirmation.isConfirmed) return;
 
   try {
-
     const user = await signInUser();
-
-    const docRef =
-      db.collection('adCampaigns').doc(docId);
-
-    /*
-      Security check:
-      Read document first and verify ownerUid.
-    */
-
+    const docRef = db.collection('adCampaigns').doc(docId);
     const docSnap = await docRef.get();
 
     if (!docSnap.exists) {
@@ -606,19 +475,13 @@ async function deleteAd(docId, adName) {
     const data = docSnap.data();
 
     if (data.ownerUid !== user.uid) {
-      throw new Error(
-        'You are not authorized to delete this ad.'
-      );
+      throw new Error('You are not authorized to delete this ad.');
     }
 
     await docRef.delete();
 
-    const row =
-      document.getElementById(`row-${docId}`);
-
-    if (row) {
-      row.remove();
-    }
+    const row = document.getElementById(`row-${docId}`);
+    if (row) row.remove();
 
     Swal.fire({
       icon: 'success',
@@ -628,15 +491,9 @@ async function deleteAd(docId, adName) {
       showConfirmButton: false
     });
 
-    /*
-      If no row remains, show empty state.
-    */
-
-    const remainingRows =
-      document.querySelectorAll('#adsTableBody tr');
+    const remainingRows = document.querySelectorAll('#adsTableBody tr');
 
     if (!remainingRows.length) {
-
       document.getElementById('adsTableBody').innerHTML = `
         <tr>
           <td colspan="16">
@@ -645,53 +502,33 @@ async function deleteAd(docId, adName) {
               <h5 class="mt-3">No ads found</h5>
               <p>This ad has been deleted.</p>
               <a href="index.html" class="btn btn-primary">
-                <i class="bi bi-plus-lg me-1"></i>
-                Create New Ad
+                <i class="bi bi-plus-lg me-1"></i>Create New Ad
               </a>
             </div>
           </td>
         </tr>
       `;
-
       document.getElementById('totalAds').textContent = '0';
       document.getElementById('pendingAds').textContent = '0';
       document.getElementById('totalBudget').textContent = '0';
-
     } else {
-
-      /*
-        Recalculate stats using currently displayed rows
-        by loading the selected campaign name again.
-      */
       try {
-
-        const updatedAds =
-          await findUserAdsByAdName();
-
+        const updatedAds = await findUserAdsByAdName();
         renderStats(updatedAds);
-
       } catch (e) {
-
         document.getElementById('totalAds').textContent =
           document.querySelectorAll('.delete-btn').length;
-
       }
-
     }
 
   } catch (error) {
-
     console.error('Delete error:', error);
-
     Swal.fire({
       icon: 'error',
       title: 'Delete failed',
-      text: error.message ||
-        'Unable to delete this ad.'
+      text: error.message || 'Unable to delete this ad.'
     });
-
   }
-
 }
 
 /* =========================================================
@@ -699,88 +536,74 @@ async function deleteAd(docId, adName) {
    ========================================================= */
 
 async function openDashboard() {
-
-  const tbody =
-    document.getElementById('adsTableBody');
+  const tbody = document.getElementById('adsTableBody');
 
   try {
-
-    document.getElementById('dataStatus').textContent =
-      'Loading...';
+    document.getElementById('dataStatus').textContent = 'Loading...';
 
     tbody.innerHTML = `
       <tr>
         <td colspan="16">
           <div class="empty-state">
             <div class="spinner-border text-primary mb-3"></div>
-            <div>
-              Searching for:
-              <strong>${escapeHtml(requestedAdName)}</strong>
-            </div>
+            <div>Searching for: <strong>${escapeHtml(requestedAdName)}</strong></div>
           </div>
         </td>
       </tr>
     `;
 
-    const ads =
-      await findUserAdsByAdName();
+    const ads = await findUserAdsByAdName();
 
     renderStats(ads);
     renderTable(ads);
 
-    document.getElementById('dataStatus').textContent =
-      `${ads.length} ad found`;
+    document.getElementById('dataStatus').textContent = `${ads.length} ad found`;
 
   } catch (error) {
-
     console.error('Dashboard error:', error);
 
-    document.getElementById('dataStatus').textContent =
-      'Not found';
+    const rawMessage = error.message || '';
+    const isConfigError = rawMessage.startsWith('CONFIG_ERROR:');
+    const displayMessage = isConfigError
+      ? rawMessage.replace('CONFIG_ERROR:', '')
+      : rawMessage;
+
+    document.getElementById('dataStatus').textContent = isConfigError ? 'Setup needed' : 'Not found';
 
     tbody.innerHTML = `
       <tr>
         <td colspan="16">
           <div class="empty-state">
-
-            <i class="bi bi-search fs-1 text-warning"></i>
-
-            <h5 class="mt-3">
-              Ad not found
-            </h5>
-
-            <p>
-              ${escapeHtml(error.message)}
-            </p>
-
-            <button
-              class="btn btn-primary"
-              id="changeAdNameBtn"
-            >
-              <i class="bi bi-pencil me-1"></i>
-              Enter Another Ad Name
-            </button>
-
+            <i class="bi bi-${isConfigError ? 'exclamation-triangle text-danger' : 'search text-warning'} fs-1"></i>
+            <h5 class="mt-3">${isConfigError ? 'Firebase setup required' : 'Ad not found'}</h5>
+            <p style="max-width:520px;margin:0 auto;">${escapeHtml(displayMessage)}</p>
+            ${isConfigError ? `
+              <button class="btn btn-outline-secondary mt-2" id="retryBtn">
+                <i class="bi bi-arrow-clockwise me-1"></i>Retry
+              </button>
+            ` : `
+              <button class="btn btn-primary mt-2" id="changeAdNameBtn">
+                <i class="bi bi-pencil me-1"></i>Enter Another Ad Name
+              </button>
+            `}
           </div>
         </td>
       </tr>
     `;
 
-    document
-      .getElementById('changeAdNameBtn')
-      .addEventListener('click', async () => {
-
-        const success =
-          await askForAdName();
-
-        if (success) {
-          openDashboard();
-        }
-
-      });
-
+    if (isConfigError) {
+      const retryBtn = document.getElementById('retryBtn');
+      if (retryBtn) retryBtn.addEventListener('click', openDashboard);
+    } else {
+      const changeBtn = document.getElementById('changeAdNameBtn');
+      if (changeBtn) {
+        changeBtn.addEventListener('click', async () => {
+          const success = await askForAdName();
+          if (success) openDashboard();
+        });
+      }
+    }
   }
-
 }
 
 /* =========================================================
@@ -788,25 +611,12 @@ async function openDashboard() {
    ========================================================= */
 
 async function initDashboard() {
-
-  /*
-    This is the important part:
-    NOTHING is loaded before the popup.
-  */
-
-  const hasName =
-    await askForAdName();
-
-  if (!hasName) {
-    return;
-  }
-
+  const hasName = await askForAdName();
+  if (!hasName) return;
   await openDashboard();
 }
 
-document
-  .getElementById('refreshBtn')
-  .addEventListener('click', openDashboard);
+document.getElementById('refreshBtn').addEventListener('click', openDashboard);
 
 initDashboard();
 </script>
