@@ -203,7 +203,7 @@ function formatStatus(status) {
 async function askForAdName() {
   const result = await Swal.fire({
     icon: 'info',
-    title: 'Enter your Ad Name',
+    title: 'Enter your password',
     html: `
       <div class="text-start">
         <p class="mb-2">Enter the exact ad name you used when submitting your campaign.</p>
@@ -223,7 +223,7 @@ async function askForAdName() {
     showCancelButton: false,
     inputValidator: value => {
       if (!value || !value.trim()) {
-        return 'Please enter your ad name.';
+        return 'Please enter your password.';
       }
     }
   });
