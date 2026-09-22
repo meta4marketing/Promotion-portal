@@ -1,266 +1,166 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My Advertising Dashboard</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ad Manager Dashboard</title>
 
-<!-- Bootstrap 5 -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<!-- Bootstrap Icons -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-<!-- SweetAlert2 -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-<style>
-  body { background: #f4f6f8; color: #1f2937; }
-  .navbar-brand { font-weight: 700; }
-  .card { border: 0; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,.06); }
-  .login-wrap { min-height: 80vh; display: flex; align-items: center; justify-content: center; }
-  .login-card { max-width: 420px; width: 100%; }
-  .thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 1px solid #e5e7eb; }
-  .badge-status { text-transform: capitalize; }
-  .table-responsive { border-radius: 14px; overflow: hidden; }
-  #dashboardScreen { display: none; }
-  .spinner-wrap { display: flex; align-items: center; justify-content: center; padding: 50px 0; }
-  .platform-pill { font-size: .72rem; border: 1px solid #dee2e6; padding: 2px 8px; border-radius: 999px; background: #f8f9fa; margin: 2px; display: inline-block; }
-</style>
+  <style>
+    body { background:#f4f6f8; color:#1f2937; }
+    .navbar-brand { font-weight:800; }
+    .page-title { font-weight:800; }
+    .card { border:0; border-radius:16px; box-shadow:0 4px 18px rgba(0,0,0,.06); }
+    .table-card { overflow:hidden; }
+    .table-responsive { min-height:200px; }
+    .table { margin-bottom:0; }
+    .table th {
+      white-space:nowrap;
+      background:#f8fafc;
+      font-size:.78rem;
+      text-transform:uppercase;
+      letter-spacing:.03em;
+    }
+    .table td { vertical-align:middle; font-size:.88rem; }
+    .ad-image {
+      width:72px; height:52px; object-fit:cover;
+      border-radius:8px; background:#eef1f4;
+    }
+    .platform-badge {
+      display:inline-block;
+      padding:4px 8px;
+      margin:2px;
+      border-radius:999px;
+      background:#eef2f7;
+      font-size:.72rem;
+    }
+    .status-badge {
+      display:inline-block;
+      padding:5px 9px;
+      border-radius:999px;
+      font-size:.73rem;
+      font-weight:700;
+    }
+    .status-pending { background:#fff3cd; color:#856404; }
+    .status-active { background:#d1e7dd; color:#0f5132; }
+    .status-paused { background:#e2e3e5; color:#41464b; }
+    .status-rejected { background:#f8d7da; color:#842029; }
+    .empty-state { padding:65px 20px; text-align:center; color:#6c757d; }
+    .stat-number { font-size:1.8rem; font-weight:800; }
+    code { word-break:break-all; }
+    @media(max-width:767px) {
+      .table { min-width:1300px; }
+    }
+  </style>
 </head>
+
 <body>
 
 <nav class="navbar navbar-dark bg-dark">
-  <div class="container">
-    <a class="navbar-brand" href="#"><i class="bi bi-speedometer2 me-2"></i>My Advertising Dashboard</a>
-    <div id="navUserArea" class="text-white-50 small"></div>
+  <div class="container-fluid px-3 px-md-4">
+    <a class="navbar-brand" href="index.html">
+      <i class="bi bi-megaphone-fill me-2"></i>Ad Manager
+    </a>
+    <div class="d-flex align-items-center gap-2">
+      <span class="text-white-50 small d-none d-md-inline">All Campaigns</span>
+      <a href="index.html" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>Create Ad
+      </a>
+    </div>
   </div>
 </nav>
 
-<!-- ============ LOGIN SCREEN ============ -->
-<div id="loginScreen" class="login-wrap">
-  <div class="card p-4 login-card">
-    <div class="text-center mb-3">
-      <i class="bi bi-envelope-check fs-1 text-primary"></i>
-      <h5 class="mt-2 mb-0">Access your dashboard</h5>
-      <p class="text-muted small">Enter the same email you used while submitting your ad.</p>
-    </div>
+<main class="container-fluid px-3 px-md-4 py-4">
 
-    <!-- Step 1: enter email -->
-    <div id="emailStep">
-      <label for="loginEmail" class="form-label">Registered Email</label>
-      <input type="email" id="loginEmail" class="form-control mb-3" placeholder="you@example.com">
-      <button id="sendLinkBtn" class="btn btn-primary w-100">
-        <i class="bi bi-send-fill me-1"></i> Send Login Link
-      </button>
-    </div>
-
-    <!-- Step 2: link sent -->
-    <div id="linkSentStep" style="display:none;">
-      <div class="alert alert-success small mb-3">
-        <i class="bi bi-check-circle-fill me-1"></i>
-        A login link has been sent to <strong id="sentToEmail"></strong>.
-        Open your email on this device and click the link to continue.
-      </div>
-      <button id="backToEmailBtn" class="btn btn-outline-secondary w-100 btn-sm">
-        <i class="bi bi-arrow-left me-1"></i> Use a different email
-      </button>
-    </div>
-
-    <!-- Step 3: confirm email (only if link opened on a different device/browser) -->
-    <div id="confirmEmailStep" style="display:none;">
-      <div class="alert alert-warning small mb-3">
-        <i class="bi bi-exclamation-triangle me-1"></i>
-        Please confirm your email to finish logging in.
-      </div>
-      <label for="confirmEmailInput" class="form-label">Confirm your email</label>
-      <input type="email" id="confirmEmailInput" class="form-control mb-3" placeholder="you@example.com">
-      <button id="confirmEmailBtn" class="btn btn-primary w-100">Confirm & Log In</button>
-    </div>
-  </div>
-</div>
-
-<!-- ============ DASHBOARD SCREEN ============ -->
-<main id="dashboardScreen" class="container py-4">
-
-  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
-      <h1 class="h4 mb-1">Your Submissions</h1>
-      <div class="text-muted small">Logged in as: <strong id="loggedInEmail"></strong></div>
+      <h1 class="page-title mb-1">Ad Campaigns Dashboard</h1>
+      <p class="text-muted mb-0">All submitted advertising campaigns from Firestore.</p>
     </div>
-    <button id="logoutBtn" class="btn btn-outline-danger btn-sm">
-      <i class="bi bi-box-arrow-right me-1"></i> Logout
+
+    <button id="refreshBtn" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-clockwise me-1"></i>Refresh
     </button>
   </div>
 
-  <div class="card p-3 mb-3">
-    <div class="row g-2 align-items-center">
-      <div class="col-md-8">
-        <input type="text" id="searchBox" class="form-control" placeholder="Search by ad name, location or status...">
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="card p-3">
+        <div class="small text-muted">Total Ads</div>
+        <div class="stat-number" id="totalAds">0</div>
       </div>
-      <div class="col-md-4 text-md-end">
-        <button id="refreshBtn" class="btn btn-outline-secondary btn-sm">
-          <i class="bi bi-arrow-clockwise me-1"></i> Refresh
-        </button>
+    </div>
+    <div class="col-md-4">
+      <div class="card p-3">
+        <div class="small text-muted">Pending Ads</div>
+        <div class="stat-number" id="pendingAds">0</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card p-3">
+        <div class="small text-muted">Total Budget</div>
+        <div class="stat-number">₹<span id="totalBudget">0</span></div>
       </div>
     </div>
   </div>
 
-  <div id="loadingRows" class="spinner-wrap">
-    <div class="spinner-border text-primary" role="status"></div>
-  </div>
+  <div class="card table-card">
+    <div class="p-3 p-md-4 border-bottom d-flex justify-content-between align-items-center">
+      <div>
+        <div class="fw-bold">Campaign Data</div>
+        <div class="small text-muted">Data loaded directly from Firestore.</div>
+      </div>
+      <span class="badge text-bg-light" id="dataStatus">Loading...</span>
+    </div>
 
-  <div id="emptyState" class="card p-5 text-center" style="display:none;">
-    <i class="bi bi-inbox fs-1 text-muted mb-2"></i>
-    <div class="fw-semibold mb-1">No submissions found for this account.</div>
-    <div class="text-muted small mb-3">You haven't submitted any ad campaigns yet.</div>
-    <a id="createNewBtn" href="index.html" class="btn btn-primary mx-auto" style="width:fit-content;">
-      <i class="bi bi-plus-lg me-1"></i> Create New Submission
-    </a>
-  </div>
-
-  <div class="card p-3" id="tableWrap" style="display:none;">
     <div class="table-responsive">
-      <table class="table align-middle">
+      <table class="table table-hover align-middle">
         <thead>
           <tr>
-            <th>#</th>
-            <th>Date</th>
             <th>Ad Name</th>
+            <th>Description</th>
+            <th>Age</th>
+            <th>Gender</th>
+            <th>Interests</th>
+            <th>Location</th>
+            <th>Radius</th>
             <th>Budget</th>
             <th>Platforms</th>
-            <th>Location</th>
+            <th>Payment Method</th>
             <th>Image</th>
             <th>Status</th>
-            <th>Actions</th>
+            <th>Created At</th>
+            <th>Document ID</th>
+            <th>Action</th>
           </tr>
         </thead>
-        <tbody id="submissionsBody"></tbody>
+
+        <tbody id="adsTableBody">
+          <tr>
+            <td colspan="15">
+              <div class="empty-state">
+                <div class="spinner-border text-primary mb-3"></div>
+                <div>Loading campaigns...</div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
       </table>
     </div>
   </div>
 
 </main>
 
-<!-- ============ IMAGE MODAL ============ -->
-<div class="modal fade" id="imageModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h6 class="modal-title">Ad Creative</h6>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body text-center">
-        <img id="fullImage" src="" alt="Ad creative" class="img-fluid rounded">
-      </div>
-    </div>
-  </div>
-</div>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 
-<!-- ============ EDIT MODAL ============ -->
-<div class="modal fade" id="editModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h6 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Edit Submission</h6>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="editDocId">
-
-        <div class="mb-3">
-          <label class="form-label">Ad Name</label>
-          <input type="text" id="editAdName" class="form-control" maxlength="100">
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label">Description</label>
-          <textarea id="editDescription" class="form-control" rows="4" maxlength="500"></textarea>
-        </div>
-
-        <div class="row g-3 mb-3">
-          <div class="col-6">
-            <label class="form-label">Age Range</label>
-            <select id="editAge" class="form-select">
-              <option value="18-65">18–65+</option>
-              <option value="18-24">18–24</option>
-              <option value="25-34">25–34</option>
-              <option value="35-44">35–44</option>
-              <option value="45-54">45–54</option>
-              <option value="55-65">55–65+</option>
-            </select>
-          </div>
-          <div class="col-6">
-            <label class="form-label">Gender</label>
-            <select id="editGender" class="form-select">
-              <option>All</option>
-              <option>Men</option>
-              <option>Women</option>
-              <option>Other / Not specified</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label">Interests</label>
-          <input type="text" id="editInterests" class="form-control">
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label">Location</label>
-          <input type="text" id="editLocation" class="form-control">
-        </div>
-
-        <div class="row g-3 mb-3">
-          <div class="col-6">
-            <label class="form-label">Radius (km)</label>
-            <select id="editRadius" class="form-select">
-              <option value="2">2 km</option>
-              <option value="5">5 km</option>
-              <option value="10">10 km</option>
-              <option value="20">20 km</option>
-              <option value="50">50 km</option>
-              <option value="80">80 km</option>
-            </select>
-          </div>
-          <div class="col-6">
-            <label class="form-label">Budget (₹)</label>
-            <input type="number" id="editBudget" class="form-control" min="118" max="1000">
-          </div>
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label">Platforms</label>
-          <input type="text" id="editPlatforms" class="form-control" placeholder="Comma separated, e.g. Facebook, Instagram">
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label">Payment Method</label>
-          <select id="editPaymentMethod" class="form-select">
-            <option value="">Select payment method</option>
-            <option>UPI</option>
-            <option>Credit / Debit Card</option>
-            <option>Net Banking</option>
-          </select>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" id="saveEditBtn" class="btn btn-primary">
-          <i class="bi bi-check-lg me-1"></i> Save Changes
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Bootstrap JS (for modals) -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-<script type="module">
-// =====================================================================
-// CONFIGURATION — replace with your own values
-// =====================================================================
-
-// 1) Firebase config — use the SAME config as your index.html form
+<script>
+/* =========================================================
+   FIREBASE CONFIG
+   ========================================================= */
 const firebaseConfig = {
   apiKey: "AIzaSyBzGF8zjTiqZrJjEL1MmomRXwwKBWCuz20",
   authDomain: "adspro-8aa99.firebaseapp.com",
@@ -270,292 +170,11 @@ const firebaseConfig = {
   appId: "1:467915212561:web:0e91418750ff14a832aeb0"
 };
 
-// 2) Firestore collection where the form saves submissions
-const COLLECTION_NAME = "adCampaigns";
-
-// 3) Field name mapping — change the RIGHT-hand values only if your
-//    Firestore documents use different field names.
-const FIELD_MAP = {
-  adName: "adName",
-  description: "description",
-  age: "age",
-  gender: "gender",
-  interests: "interests",
-  location: "location",
-  radius: "radius",
-  budget: "budget",
-  platforms: "platforms",      // stored as an array
-  paymentMethod: "paymentMethod",
-  image: "imageUrl",
-  status: "status",
-  createdAt: "createdAt"
-};
-
-// 4) Where "Create New Submission" should point to
-const FORM_URL = "index.html";
-
-// =====================================================================
-// FIREBASE INIT
-// =====================================================================
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
-import {
-  getAuth,
-  sendSignInLinkToEmail,
-  isSignInWithEmailLink,
-  signInWithEmailLink,
-  onAuthStateChanged,
-  signOut
-} from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
-import {
-  getFirestore,
-  collection,
-  query,
-  where,
-  orderBy,
-  getDocs,
-  doc,
-  updateDoc
-} from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-document.getElementById('createNewBtn').href = FORM_URL;
-
-// =====================================================================
-// STATE
-// =====================================================================
-let allSubmissions = [];   // cache of the currently logged-in user's docs
-
-// =====================================================================
-// UI HELPERS
-// =====================================================================
-function showLogin() {
-  document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('dashboardScreen').style.display = 'none';
-  document.getElementById('navUserArea').textContent = '';
-}
-
-function showDashboard(adName) {
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('dashboardScreen').style.display = 'block';
-  document.getElementById('loggedInEmail').textContent = adName;
-  document.getElementById('navUserArea').textContent = adName;
-}
-
-function friendlyError(error) {
-  const code = error && error.code ? error.code : '';
-  const map = {
-    'auth/invalid-email': 'That email address looks invalid.',
-    'auth/missing-email': 'Please enter an email address.',
-    'auth/invalid-action-code': 'This login link is invalid or has already been used.',
-    'auth/expired-action-code': 'This login link has expired. Please request a new one.',
-    'permission-denied': 'You do not have permission to view this data.',
-    'unavailable': 'Network error — please check your connection and try again.'
-  };
-  return map[code] || 'Something went wrong. Please try again.';
-}
-
-function formatDate(ts) {
-  if (!ts) return '—';
-  try {
-    const d = ts.toDate ? ts.toDate() : new Date(ts);
-    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) +
-           ' ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-  } catch {
-    return '—';
-  }
-}
-
-function statusBadgeClass(status) {
-  const s = (status || '').toLowerCase();
-  if (s === 'approved' || s === 'active') return 'bg-success';
-  if (s === 'rejected') return 'bg-danger';
-  return 'bg-secondary';
-}
-
-// =====================================================================
-// STEP 1 — SEND LOGIN LINK
-// =====================================================================
-document.getElementById('sendLinkBtn').addEventListener('click', async () => {
-  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  if (!emailPattern.test(adName)) {
-    Swal.fire({ icon: 'warning', title: 'Invalid email', text: 'Please enter a valid email address.' });
-    return;
-  }
-
-  const btn = document.getElementById('sendLinkBtn');
-  const originalHtml = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Checking...';
-
-  try {
-    // Check whether any submission exists for this email
-    const q = query(
-      collection(db, COLLECTION_NAME),
-      where(FIELD_MAP.adName, "==", adName)
-    );
-    const snap = await getDocs(q);
-
-    if (snap.empty) {
-      Swal.fire({ icon: 'info', title: 'No submission found', text: 'No submission found for this email.' });
-      return;
-    }
-
-    const actionCodeSettings = {
-      url: window.location.href.split('?')[0],
-      handleCodeInApp: true
-    };
-
-    await sendSignInLinkToEmail(auth, adName, actionCodeSettings);
-    window.localStorage.setItem('emailForSignIn', adName);
-
-    document.getElementById('sentToEmail').textContent = adName;
-    document.getElementById('emailStep').style.display = 'none';
-    document.getElementById('linkSentStep').style.display = 'block';
-
-  } catch (error) {
-    console.error(error);
-    Swal.fire({ icon: 'error', title: 'Could not send link', text: friendlyError(error) });
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = originalHtml;
-  }
-});
-
-document.getElementById('backToEmailBtn').addEventListener('click', () => {
-  document.getElementById('linkSentStep').style.display = 'none';
-  document.getElementById('emailStep').style.display = 'block';
-});
-
-// =====================================================================
-// STEP 2 — COMPLETE SIGN-IN WHEN THE LINK IS OPENED
-// =====================================================================
-async function completeSignInIfNeeded() {
-  if (!isSignInWithEmailLink(auth, window.location.href)) return;
-
-  let adName = window.localStorage.getItem('emailForSignIn');
-
-  if (!adName) {
-    // Link opened on a different device/browser — ask user to confirm
-    document.getElementById('emailStep').style.display = 'none';
-    document.getElementById('confirmEmailStep').style.display = 'block';
-
-    document.getElementById('confirmEmailBtn').addEventListener('click', async () => {
-      const confirmedEmail = document.getElementById('confirmEmailInput').value.trim().toLowerCase();
-      if (!confirmedEmail) return;
-      await finishSignIn(confirmedEmail);
-    });
-    return;
-  }
-
-  await finishSignIn(adName);
-}
-
-async function finishSignIn(adName) {
-  try {
-    await signInWithEmailLink(auth, adName, window.location.href);
-    window.localStorage.removeItem('emailForSignIn');
-    // Clean the sign-in link params out of the URL
-    window.history.replaceState({}, document.title, window.location.pathname);
-  } catch (error) {
-    console.error(error);
-    Swal.fire({ icon: 'error', title: 'Login link problem', text: friendlyError(error) });
-  }
-}
-
-// =====================================================================
-// LOAD SUBMISSIONS FOR THE LOGGED-IN USER
-// =====================================================================
-async function loadUserSubmissions(adName) {
-  document.getElementById('loadingRows').style.display = 'flex';
-  document.getElementById('emptyState').style.display = 'none';
-  document.getElementById('tableWrap').style.display = 'none';
-
-  try {
-    const q = query(
-      collection(db, COLLECTION_NAME),
-      where(FIELD_MAP.adName, "==", adName),
-      orderBy(FIELD_MAP.createdAt, "desc")
-    );
-    const snap = await getDocs(q);
-
-    allSubmissions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    renderTable(allSubmissions);
-
-  } catch (error) {
-    console.error(error);
-    Swal.fire({ icon: 'error', title: 'Could not load submissions', text: friendlyError(error) });
-  } finally {
-    document.getElementById('loadingRows').style.display = 'none';
-  }
-}
-
-// =====================================================================
-// RENDER TABLE
-// =====================================================================
-function renderTable(rows) {
-  const body = document.getElementById('submissionsBody');
-  body.innerHTML = '';
-
-  if (!rows.length) {
-    document.getElementById('emptyState').style.display = 'block';
-    document.getElementById('tableWrap').style.display = 'none';
-    return;
-  }
-
-  document.getElementById('emptyState').style.display = 'none';
-  document.getElementById('tableWrap').style.display = 'block';
-
-  rows.forEach((sub, index) => {
-    const tr = document.createElement('tr');
-
-    const platformsHtml = Array.isArray(sub[FIELD_MAP.platforms])
-      ? sub[FIELD_MAP.platforms].map(p => `<span class="platform-pill">${escapeHtml(p)}</span>`).join('')
-      : '—';
-
-    const imageUrl = sub[FIELD_MAP.image];
-    const imageHtml = imageUrl
-      ? `<img src="${escapeHtml(imageUrl)}" class="thumb" data-full="${escapeHtml(imageUrl)}">`
-      : '<span class="text-muted small">No image</span>';
-
-    tr.innerHTML = `
-      <td>${index + 1}</td>
-      <td>${formatDate(sub[FIELD_MAP.createdAt])}</td>
-      <td>${escapeHtml(sub[FIELD_MAP.adName] || '—')}</td>
-      <td>₹${sub[FIELD_MAP.budget] ?? '—'}</td>
-      <td>${platformsHtml}</td>
-      <td>${escapeHtml(sub[FIELD_MAP.location] || '—')}</td>
-      <td>${imageHtml}</td>
-      <td><span class="badge badge-status ${statusBadgeClass(sub[FIELD_MAP.status])}">${escapeHtml(sub[FIELD_MAP.status] || 'pending')}</span></td>
-      <td>
-        <button class="btn btn-sm btn-outline-primary edit-btn" data-id="${sub.id}">
-          <i class="bi bi-pencil"></i> Edit
-        </button>
-      </td>
-    `;
-    body.appendChild(tr);
-  });
-
-  // Wire up image modal
-  document.querySelectorAll('.thumb').forEach(img => {
-    img.addEventListener('click', () => {
-      document.getElementById('fullImage').src = img.dataset.full;
-      new bootstrap.Modal(document.getElementById('imageModal')).show();
-    });
-  });
-
-  // Wire up edit buttons
-  document.querySelectorAll('.edit-btn').forEach(btn => {
-    btn.addEventListener('click', () => openEditModal(btn.dataset.id));
-  });
-}
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
 function escapeHtml(value) {
-  return String(value)
+  return String(value ?? '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
@@ -563,120 +182,245 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 
-// =====================================================================
-// SEARCH
-// =====================================================================
-document.getElementById('searchBox').addEventListener('input', function() {
-  const term = this.value.trim().toLowerCase();
-  if (!term) { renderTable(allSubmissions); return; }
-
-  const filtered = allSubmissions.filter(sub => {
-    const name = (sub[FIELD_MAP.adName] || '').toLowerCase();
-    const loc = (sub[FIELD_MAP.location] || '').toLowerCase();
-    const status = (sub[FIELD_MAP.status] || '').toLowerCase();
-    return name.includes(term) || loc.includes(term) || status.includes(term);
-  });
-  renderTable(filtered);
-});
-
-document.getElementById('refreshBtn').addEventListener('click', () => {
-  const user = auth.currentUser;
-  if (user && user.adName) loadUserSubmissions(user.adName);
-});
-
-// =====================================================================
-// EDIT MODAL
-// =====================================================================
-function openEditModal(docId) {
-  const sub = allSubmissions.find(s => s.id === docId);
-  if (!sub) return;
-
-  document.getElementById('editDocId').value = sub.id;
-  document.getElementById('editAdName').value = sub[FIELD_MAP.adName] || '';
-  document.getElementById('editDescription').value = sub[FIELD_MAP.description] || '';
-  document.getElementById('editAge').value = sub[FIELD_MAP.age] || '18-65';
-  document.getElementById('editGender').value = sub[FIELD_MAP.gender] || 'All';
-  document.getElementById('editInterests').value = sub[FIELD_MAP.interests] || '';
-  document.getElementById('editLocation').value = sub[FIELD_MAP.location] || '';
-  document.getElementById('editRadius').value = sub[FIELD_MAP.radius] || '5';
-  document.getElementById('editBudget').value = sub[FIELD_MAP.budget] || '';
-  document.getElementById('editPlatforms').value = Array.isArray(sub[FIELD_MAP.platforms])
-    ? sub[FIELD_MAP.platforms].join(', ')
-    : '';
-  document.getElementById('editPaymentMethod').value = sub[FIELD_MAP.paymentMethod] || '';
-
-  new bootstrap.Modal(document.getElementById('editModal')).show();
+function formatINR(value) {
+  return Number(value || 0).toLocaleString('en-IN');
 }
 
-document.getElementById('saveEditBtn').addEventListener('click', async () => {
-  const docId = document.getElementById('editDocId').value;
-  const btn = document.getElementById('saveEditBtn');
-  const originalHtml = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+function formatDate(value) {
+  if (!value) return '—';
+  try {
+    const date = value.toDate ? value.toDate() : new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+  } catch {
+    return '—';
+  }
+}
+
+function formatPlatforms(platforms) {
+  if (!Array.isArray(platforms) || !platforms.length) return '—';
+  return platforms.map(p => `<span class="platform-badge">${escapeHtml(p)}</span>`).join('');
+}
+
+function formatStatus(status) {
+  const value = String(status || 'pending').toLowerCase();
+  let className = 'status-pending';
+  if (value === 'active') className = 'status-active';
+  if (value === 'paused') className = 'status-paused';
+  if (value === 'rejected') className = 'status-rejected';
+  return `<span class="status-badge ${className}">${escapeHtml(status || 'pending')}</span>`;
+}
+
+/* =========================================================
+   LOAD ALL ADS
+   ========================================================= */
+
+async function loadAds() {
+  const snapshot = await db.collection('adCampaigns').get();
+
+  const ads = [];
+  snapshot.forEach(doc => {
+    ads.push({ id: doc.id, ...doc.data() });
+  });
+
+  ads.sort((a, b) => {
+    const aTime = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+    const bTime = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+    return bTime - aTime;
+  });
+
+  return ads;
+}
+
+function renderStats(ads) {
+  document.getElementById('totalAds').textContent = ads.length;
+
+  const pending = ads.filter(ad => String(ad.status || '').toLowerCase() === 'pending').length;
+  const totalBudget = ads.reduce((total, ad) => total + Number(ad.budget || 0), 0);
+
+  document.getElementById('pendingAds').textContent = pending;
+  document.getElementById('totalBudget').textContent = formatINR(totalBudget);
+}
+
+function renderTable(ads) {
+  const tbody = document.getElementById('adsTableBody');
+
+  if (!ads.length) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="15">
+          <div class="empty-state">
+            <i class="bi bi-megaphone fs-1"></i>
+            <h5 class="mt-3">No campaigns found</h5>
+            <a href="index.html" class="btn btn-primary mt-2">
+              <i class="bi bi-plus-lg me-1"></i>Create your first ad
+            </a>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = ads.map(ad => `
+    <tr id="row-${escapeHtml(ad.id)}">
+      <td><strong>${escapeHtml(ad.adName || '—')}</strong></td>
+      <td style="min-width:220px;max-width:320px;">
+        <div class="text-truncate" title="${escapeHtml(ad.description || '')}">
+          ${escapeHtml(ad.description || '—')}
+        </div>
+      </td>
+      <td>${escapeHtml(ad.age || '—')}</td>
+      <td>${escapeHtml(ad.gender || '—')}</td>
+      <td style="min-width:180px;">${escapeHtml(ad.interests || '—')}</td>
+      <td style="min-width:220px;">${escapeHtml(ad.location || '—')}</td>
+      <td>${ad.radius != null ? escapeHtml(ad.radius) + ' km' : '—'}</td>
+      <td><strong>₹${formatINR(ad.budget)}</strong></td>
+      <td style="min-width:170px;">${formatPlatforms(ad.platforms)}</td>
+      <td>${escapeHtml(ad.paymentMethod || '—')}</td>
+      <td>
+        ${
+          ad.imageUrl
+          ? `
+            <a href="${escapeHtml(ad.imageUrl)}" target="_blank" rel="noopener noreferrer">
+              <img src="${escapeHtml(ad.imageUrl)}" class="ad-image" alt="Ad creative" loading="lazy" onerror="this.style.display='none'">
+            </a>
+          `
+          : '—'
+        }
+      </td>
+      <td>${formatStatus(ad.status)}</td>
+      <td>${formatDate(ad.createdAt)}</td>
+      <td><code>${escapeHtml(ad.id)}</code></td>
+      <td>
+        <button type="button" class="btn btn-sm btn-outline-danger delete-btn"
+          data-id="${escapeHtml(ad.id)}" data-name="${escapeHtml(ad.adName || 'this ad')}">
+          <i class="bi bi-trash3 me-1"></i>Delete
+        </button>
+      </td>
+    </tr>
+  `).join('');
+
+  document.querySelectorAll('.delete-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      deleteAd(this.dataset.id, this.dataset.name);
+    });
+  });
+}
+
+/* =========================================================
+   DELETE AD
+   ========================================================= */
+
+async function deleteAd(docId, adName) {
+  const confirmation = await Swal.fire({
+    icon: 'warning',
+    title: 'Delete this ad?',
+    html: `
+      <p class="mb-1">You are about to permanently delete:</p>
+      <strong>${escapeHtml(adName)}</strong>
+      <p class="text-danger small mt-3 mb-0">This will remove the campaign data from Firestore.</p>
+    `,
+    showCancelButton: true,
+    confirmButtonText: 'Yes, Delete',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#dc3545',
+    reverseButtons: true
+  });
+
+  if (!confirmation.isConfirmed) return;
 
   try {
-    const updatedData = {
-      [FIELD_MAP.adName]: document.getElementById('editAdName').value.trim(),
-      [FIELD_MAP.description]: document.getElementById('editDescription').value.trim(),
-      [FIELD_MAP.age]: document.getElementById('editAge').value,
-      [FIELD_MAP.gender]: document.getElementById('editGender').value,
-      [FIELD_MAP.interests]: document.getElementById('editInterests').value.trim(),
-      [FIELD_MAP.location]: document.getElementById('editLocation').value.trim(),
-      [FIELD_MAP.radius]: Number(document.getElementById('editRadius').value),
-      [FIELD_MAP.budget]: Number(document.getElementById('editBudget').value),
-      [FIELD_MAP.platforms]: document.getElementById('editPlatforms').value
-        .split(',').map(p => p.trim()).filter(Boolean),
-      [FIELD_MAP.paymentMethod]: document.getElementById('editPaymentMethod').value
-      // Note: email, id and createdAt are intentionally NOT included here,
-      // so they can never be changed from this modal.
-    };
+    await db.collection('adCampaigns').doc(docId).delete();
 
-    await updateDoc(doc(db, COLLECTION_NAME, docId), updatedData);
+    const row = document.getElementById(`row-${docId}`);
+    if (row) row.remove();
 
-    bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+    Swal.fire({
+      icon: 'success',
+      title: 'Ad Deleted',
+      text: 'The campaign has been removed from Firestore.',
+      timer: 1500,
+      showConfirmButton: false
+    });
 
-    Swal.fire({ icon: 'success', title: 'Updated!', text: 'Your submission has been updated.', timer: 1800, showConfirmButton: false });
+    const remainingRows = document.querySelectorAll('#adsTableBody tr[id^="row-"]');
 
-    const user = auth.currentUser;
-    if (user && user.adName) await loadUserSubmissions(user.adName);
+    if (!remainingRows.length) {
+      renderTable([]);
+      document.getElementById('totalAds').textContent = '0';
+      document.getElementById('pendingAds').textContent = '0';
+      document.getElementById('totalBudget').textContent = '0';
+    } else {
+      const updatedAds = await loadAds();
+      renderStats(updatedAds);
+    }
 
   } catch (error) {
-    console.error(error);
-    Swal.fire({ icon: 'error', title: 'Update failed', text: friendlyError(error) });
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = originalHtml;
+    console.error('Delete error:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Delete failed',
+      text: error.message || 'Unable to delete this ad.'
+    });
   }
-});
+}
 
-// =====================================================================
-// LOGOUT
-// =====================================================================
-document.getElementById('logoutBtn').addEventListener('click', async () => {
-  await signOut(auth);
-  allSubmissions = [];
-  document.getElementById('loginEmail').value = '';
-  document.getElementById('emailStep').style.display = 'block';
-  document.getElementById('linkSentStep').style.display = 'none';
-  document.getElementById('confirmEmailStep').style.display = 'none';
-  showLogin();
-});
+/* =========================================================
+   INIT / REFRESH
+   ========================================================= */
 
-// =====================================================================
-// AUTH STATE — persistent session
-// =====================================================================
-onAuthStateChanged(auth, (user) => {
-  if (user && user.adName) {
-    showDashboard(user.adName);
-    loadUserSubmissions(user.adName);
-  } else {
-    showLogin();
+async function refreshDashboard() {
+  const tbody = document.getElementById('adsTableBody');
+
+  try {
+    document.getElementById('dataStatus').textContent = 'Loading...';
+
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="15">
+          <div class="empty-state">
+            <div class="spinner-border text-primary mb-3"></div>
+            <div>Loading campaigns...</div>
+          </div>
+        </td>
+      </tr>
+    `;
+
+    const ads = await loadAds();
+
+    renderStats(ads);
+    renderTable(ads);
+
+    document.getElementById('dataStatus').textContent = `${ads.length} ad(s) found`;
+
+  } catch (error) {
+    console.error('Dashboard load error:', error);
+
+    document.getElementById('dataStatus').textContent = 'Error';
+
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="15">
+          <div class="empty-state">
+            <i class="bi bi-exclamation-triangle fs-1 text-danger"></i>
+            <h5 class="mt-3">Could not load campaigns</h5>
+            <p style="max-width:520px;margin:0 auto;">
+              ${escapeHtml(error.message || 'Check your Firestore security rules allow read access, or your internet connection.')}
+            </p>
+            <button class="btn btn-outline-secondary mt-2" onclick="refreshDashboard()">
+              <i class="bi bi-arrow-clockwise me-1"></i>Retry
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
   }
-});
+}
 
-// Run once on page load to catch an incoming sign-in link
-completeSignInIfNeeded();
+document.getElementById('refreshBtn').addEventListener('click', refreshDashboard);
+
+refreshDashboard();
 </script>
 
 </body>
