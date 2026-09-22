@@ -703,6 +703,29 @@
     const data = await response.json();
     return data.secure_url;
   }
+
+  // Firebase Auth compat script bhi <head> ya scripts section me add karo:
+// <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+
+// submit handler ke andar, imageUrl upload ke baad:
+const user = await firebase.auth().signInAnonymously().then(r => r.user);
+
+const adData = {
+  ownerUid: user.uid,   // <-- YE LINE MISSING THI
+  adName: document.getElementById('adName').value.trim(),
+  description: document.getElementById('adDescription').value.trim(),
+  age: document.getElementById('ageRange').value,
+  gender: document.getElementById('gender').value,
+  interests: document.getElementById('interests').value.trim(),
+  location: document.getElementById('selectedLocation').value,
+  radius: Number(document.getElementById('radius').value),
+  budget: Number(budget.value),
+  platforms: selectedPlatforms.map(item => item.value),
+  paymentMethod: document.getElementById('paymentMethod').value,
+  imageUrl: imageUrl,
+  status: 'pending',
+  createdAt: firebase.firestore.FieldValue.serverTimestamp()
+};
 </script>
 
 <script>
@@ -1093,22 +1116,28 @@
       // 1) Upload creative image to Cloudinary
       const imageUrl = await uploadToCloudinary(creativeFile);
 
-      // 2) Build ad data (all form fields)
-      const adData = {
-        adName: document.getElementById('adName').value.trim(),
-        description: document.getElementById('adDescription').value.trim(),
-        age: document.getElementById('ageRange').value,
-        gender: document.getElementById('gender').value,
-        interests: document.getElementById('interests').value.trim(),
-        location: document.getElementById('selectedLocation').value,
-        radius: Number(document.getElementById('radius').value),
-        budget: Number(budget.value),
-        platforms: selectedPlatforms.map(item => item.value),
-        paymentMethod: document.getElementById('paymentMethod').value,
-        imageUrl: imageUrl,
-        status: 'pending',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
+      // Firebase Auth compat script bhi <head> ya scripts section me add karo:
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+
+// submit handler ke andar, imageUrl upload ke baad:
+const user = await firebase.auth().signInAnonymously().then(r => r.user);
+
+const adData = {
+  ownerUid: user.uid,   // <-- YE LINE MISSING THI
+  adName: document.getElementById('adName').value.trim(),
+  description: document.getElementById('adDescription').value.trim(),
+  age: document.getElementById('ageRange').value,
+  gender: document.getElementById('gender').value,
+  interests: document.getElementById('interests').value.trim(),
+  location: document.getElementById('selectedLocation').value,
+  radius: Number(document.getElementById('radius').value),
+  budget: Number(budget.value),
+  platforms: selectedPlatforms.map(item => item.value),
+  paymentMethod: document.getElementById('paymentMethod').value,
+  imageUrl: imageUrl,
+  status: 'pending',
+  createdAt: firebase.firestore.FieldValue.serverTimestamp()
+};
 
       // 3) Save everything to Firestore
       await db.collection('adCampaigns').add(adData);
