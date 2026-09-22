@@ -1092,10 +1092,8 @@
     try {
       // 1) Upload creative image to Cloudinary
       const imageUrl = await uploadToCloudinary(creativeFile);
-      const user = await firebase.auth().signInAnonymously().then(r => r.user);
       // 2) Build ad data (all form fields)
       const adData = {
-        ownerUid: user.uid,
         adName: document.getElementById('adName').value.trim(),
         description: document.getElementById('adDescription').value.trim(),
         age: document.getElementById('ageRange').value,
